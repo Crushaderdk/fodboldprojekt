@@ -1,0 +1,402 @@
+
+
+//Vi starter med at definere vores variable
+//musen
+var mouse;
+//baggrundsbileedet
+var img1;
+//bolden
+var ball;
+//Player 1 & 2 point
+var p1Point = 0;
+var p2Point = 0;
+//Player 1 & 2 mål
+var goal1;
+var goal2;
+//En variabel der kan holde powerupbilledet
+var powerup;
+//En variabel der bestemmer hvor mange point der skal til før at en spiller vinder, sat til 10.
+var winpoints = 0;
+//To variabler der bestemmer hastigheden for spillerne
+var p1speed = 7;
+var p2speed = 7;
+//En variabel der indikerer at spillet ikke er startet, som udgangspunkt er den sand
+var gamenotstarted = true;
+//Variabler vi skal bruge i kollision med powerup
+var p1collidewithpowerup;
+var p2collidewithpowerup;
+//Variabler vi skal bruge i kollision med powerup
+var timetracker;
+var timetracker2;
+//vi bruger preload til at loade fodboldbanebilledet ind, da det er meget stort.
+function preload() {
+  img1 = loadImage("bane1.png");
+}
+//setup som der bliver kørt en gang i starten af programmet starter her
+function setup() {
+  //Vi laver kanvasset
+  createCanvas(1600, 800);
+  //Vi laver en ny gruppe/array sprites 
+  powerupsprites = new Group();
+  //Vi laver et for loop der genererer 5 powerups speed boost på tilfældige koordinater på banen
+  for (var i = 0; i < 5; i++) {
+    //Vi laver powerup spriten
+    var powerupSprite = createSprite(random(0, width), random(0, height));
+    //Vi sætter powerupvariablen som vi definerede tidligere til at holde powerupbilledet
+    powerup = loadImage("energy1.png");
+    //Vi tilføjer billedet til spriten
+    powerupSprite.addImage(powerup);
+    //Vi definerer masse og scale til 0.1
+    powerupSprite.scale = 0.1;
+    powerupSprite.mass = 0.1;
+    //Vi sætter en cirkelcollider på spriten
+    powerupSprite.setCollider("circle", 0, 0, 200);
+    //Vi tilføjer spriten ind i arrayet 
+    powerupsprites.add(powerupSprite);
+  }
+
+  //Vi loader billeder af bale(player1) ind, normal og spejlvendt
+  bale = loadImage("bale1.png")
+  balereverse = loadImage("balereverse.png")
+  //Vi laver en sprite og tilføjer det normale billedet af bale til spriten
+  player1 = createSprite(55, 400, 100);
+  player1.addImage(bale);
+  //Vi sætter spritens scale(størrelse) til at være 0.2 af det oprindelige billedet som var meget stort
+  player1.scale = 0.2;
+  //Vi loader billeder af messi(player1) ind, normal og spejlvendt
+  messi = loadImage("messi.png")
+  messireverse = loadImage("messireverse.png")
+  //Vi laver en sprite og tilføjer det normale billedet af messi til spriten
+  player2 = createSprite(1480, 400, 100);
+  player2.addImage(messi);
+  //Vi sætter spritens scale(størrelse) til at være 0.4 af det oprindelige billedet som var meget stort
+  player2.scale = 0.4;
+  //Vi laver en sprite til begge mål og gør dem usynlige. Vi gør dettte da vi skal bruge dem til at bestemme kollision som vi kommer ind på senere
+  goal2 = createSprite(1480, 400, 50, 230);
+  goal1 = createSprite(55, 400, 50, 230);
+  goal1.shapeColor = color(0, 0, 0, 0);
+  goal2.shapeColor = color(0, 0, 0, 0);
+  //Vi loader billede af bolden ind og tilføjer dentil spriten. 
+  //Vi definerer efterfølgende scale og mass. Mass bruger vi til at bestemme hvordan den skal reagere på kollision
+  ball = loadImage("ball6.png");
+  ballSprite = createSprite(770, 390);
+  ballSprite.addImage(ball);
+  ballSprite.scale = 1;
+  ballSprite.mass = 0.1;
+  //Vi sætter en cirkelcollider på spillerne og bolden
+  player1.setCollider("circle", 0, 100, 140);
+  player2.setCollider("circle", 0, 105, 70);
+  ballSprite.setCollider("circle", 0, 0, 30);
+  //Vi definerer at bolden som udgangspunkt ikke skal have nogen hastighed
+  ballSprite.setSpeed(0, 0);
+  ballSprite.restitution = 1;
+  //Vi sætter spillerne til ikke at bevæge sig i en kollision med bolden
+  player1.immovable = true;
+  player2.immovable = true;
+}
+//Her starter vores draw funktion der kører hvert frame
+function draw() {
+  //Vi baserer vores draw funktion på et if statement der hele tiden tjekker om variablen gamestart er true, hvis dette er tifældet loader programmet vores startskærm
+  if (gamenotstarted == true) {
+    startgamescreen();
+    //Hvis det ikke er tilfældet går den ind i en anden if statement som tjekker om player 1 eller player 2 har vundet.
+  } else {
+    //Hvis de har det, loader den en menu for den pågældende spiller, og ellers loader den vores spil.
+    if (p1Point == winpoints) {
+      drawMenu1();
+    }
+    else if (p2Point == winpoints) {
+      drawMenu2();
+    }
+    else
+      drawGame();
+
+
+
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+//Her er funktionen drawgame som tegner vores spil og indeholder alt logik der gør vores spil funktionelt. 
+function drawGame() {
+  //Vi loader baggrundsbilledet
+  image(img1, 0, 0, 1540, 800);
+  //Vi laver tekst til point for player 1 og player 2. Vi sætter farven til sort og størrelsen til 32
+  fill(0);
+  textSize(32);
+  text(p1Point, 700, 50);
+  text(p2Point, 815, 50);
+  
+  //Vi kalder funktionen playermovement
+  playermovement();
+  //Vi kalder funktionen ballphysics
+  ballphysics();
+  //Vi kalder funktionen boundaries
+  boundaries();
+  //Vi kalder funktionen powerupfunction
+  powerupfunction();
+  //Vi laver funktionen ballphysics
+  function ballphysics(){
+  //Vi laver et if statement som får bolden til få fart og retning når den kolliderer med spiller 1
+  if (ballSprite.bounce(player1)) {
+    ballSprite.setSpeed(9, ballSprite.getDirection());
+  }
+//Vi laver et if statement som får bolden til få fart og retning når den kolliderer med spiller 2
+  if (ballSprite.bounce(player2)) {
+    ballSprite.setSpeed(9, ballSprite.getDirection());
+  }
+  }
+  //Vi laver funktionen playermovement
+  function playermovement() {
+
+    //Vi bruger KeyisDown for at se om højre piletast er nede. Samtidigt tjekker vi ....
+    //...om spiller 1's position er inde for spillets ramme. Hvis dette er tilfældet sætter vi hastigheden til vores variabel p1speeds's værdi
+    //Til sidst tilføjer vi bale default billedet til player 1
+    if (keyIsDown(RIGHT_ARROW)) {
+      if (player1.position.x < width - 120) {
+        player1.position.x += p1speed;
+        player1.addImage(bale);
+      }
+    }
+    
+    //Vi bruger KeyisDown for at se om nedre piletast er nede. Samtidigt tjekker vi ....
+    //...om spiller 1's position er inde for spillets ramme. 
+    //Hvis dette er tilfældet sætter vi hastigheden til vores variabel p1speeds's værdi
+    else if (keyIsDown(DOWN_ARROW)) {
+      if (player1.position.y < height - 105) {
+        player1.position.y += p1speed;
+      }
+    }
+    //Vi bruger KeyisDown for at se om venstre piletast er nede. Samtidigt tjekker vi ....
+    //...om spiller 1's position er inde for spillets ramme. Hvis dette er tilfældet sætter vi hastigheden til vores variabel p1speeds's værdi
+    //Til sidst tilføjer vi bale spejlvendt billedet til player 1
+    else if (keyIsDown(LEFT_ARROW)) {
+      if (player1.position.x > 0 + 50) {
+        player1.position.x -= p1speed;
+        player1.addImage(balereverse);
+
+
+
+      }
+    }
+    //Vi gør det samme med øvre piletast
+    else if (keyIsDown(UP_ARROW)) {
+      if (player1.position.y > 0 + 50) {
+        player1.position.y -= p1speed;
+
+      }
+    }
+    //Her gør vi det samme med player 2 (messi)
+    if (keyIsDown(68)) {
+      if (player2.position.x < width - 120) {
+        player2.position.x += p2speed;
+        player2.addImage(messireverse);
+
+      }
+    }
+    else if (keyIsDown(83)) {
+      if (player2.position.y < height - 105) {
+        player2.position.y += p2speed;
+      }
+    }
+    else if (keyIsDown(65)) {
+      if (player2.position.x > 0 + 50) {
+        player2.position.x -= p2speed;
+        player2.addImage(messi);
+      }
+    }
+
+    else if (keyIsDown(87)) {
+      if (player2.position.y > 0 + 50) {
+        player2.position.y -= p2speed;
+      }
+    }
+  }
+//Her har vi et forloop som vi fandt på nettet der sørger for at der ikke er noget der bevæger sig ud af banen. 
+//Vi sætter det ind i en funktion.
+  function boundaries(){
+for (var i = 0; i < allSprites.length; i++) {
+    var s = allSprites[i];
+    if (s.position.x < 0) {
+      s.position.x = 1;
+      s.velocity.x = abs(s.velocity.x);
+    }
+
+    if (s.position.x > width) {
+      s.position.x = width - 1;
+      s.velocity.x = -abs(s.velocity.x);
+    }
+
+    if (s.position.y < 0) {
+      s.position.y = 1;
+      s.velocity.y = abs(s.velocity.y);
+    }
+
+    if (s.position.y > height) {
+      s.position.y = height - 1;
+      s.velocity.y = -abs(s.velocity.y);
+    }
+  }
+}
+//Vi laver en funktion til vores powerup
+function powerupfunction(){
+  //Vi laver et forloop der tjekker om player 1 og powerupspriten kolliderer. Hvis de gør, bliver speeden sat til 15 og...
+  //... powerupsriten bliver fjernet, vores kollisions-variabel bliver sand og sidst men ikke mindst sætter vi gang i vores timetracker 
+  for (var i = 0; i < powerupsprites.length; i++) {
+    if (powerupsprites[i].overlap(player1)) {
+      p1speed = 15;
+      powerupsprites[i].remove();
+      p1collidewithpowerup = true;
+      timetracker = millis();
+    }
+
+  }
+//Vi gør det samme for player 2
+  for (var i = 0; i < powerupsprites.length; i++) {
+
+    if (powerupsprites[i].overlap(player2)) {
+      p2speed = 15;
+      powerupsprites[i].remove();
+      p2collidewithpowerup = true;
+      timetracker2 = millis();
+    }
+  }
+
+  //Vi tjekker om vores variabel er sand og laver derefter en timer til hvor lang tid man kan have speed boost
+  //Når boostet er ovre sætter vi speed tilbage og variablen til falsk
+  if (p1collidewithpowerup == true) {
+    if (millis() - timetracker > 10000) {
+      p1speed = 7;
+      p1collidewithpowerup = false;
+    }
+  }
+  //Vi gør det samme til player 2
+  if (p2collidewithpowerup == true) {
+
+
+    if (millis() - timetracker2 > 10000) {
+      p2speed = 7;
+      p2collidewithpowerup = false;
+    }
+
+
+  }
+}
+//Vi kalder funktionen weGotAGoal
+  weGotAGoal();
+//Vi tegner vores sprites til canvas
+  drawSprites();
+
+}
+//Vi laver funktionen weGotAGoal
+function weGotAGoal() {
+  //Hvis bolden kolliderer med p2's mål får p1 point og banen bliver nulstillet
+  if (ballSprite.collide(goal2)) {
+    p1Point++;
+    ballSprite.position.x = 770;
+    ballSprite.position.y = 390;
+    ballSprite.setSpeed(0);
+    player1.position.x = 55;
+    player1.position.y = 400;
+    player2.position.x = 1540;
+    player2.position.y = 400;
+  }
+  //Det samme, for player 2
+  if (ballSprite.collide(goal1)) {
+    p2Point++;
+    ballSprite.position.x = 770;
+    ballSprite.position.y = 390;
+    ballSprite.setSpeed(0);
+    player1.position.x = 55;
+    player1.position.y = 400;
+    player2.position.x = 1540;
+    player2.position.y = 400;
+  }
+}
+//Her har vi en funktion der tegner menuen hvis p1 vinder
+
+function drawMenu1() {
+//Vi laver en grøn baggrund og tekststørrelse 32 og vi skriver noget passende tekst
+
+  background(50, 205, 50);
+  textSize(32);
+  text("Ali & Anton Football Game", 600, 100);
+
+  text("Congratulations, Bale got 10 points!", 500, 200);
+  text("Real Madrid won the El Classico this time", 500, 300);
+  text("Press 1 to play again", 600, 400);
+  //Vi kalder til sidst funktionen backtogame
+  Backtogame();
+
+
+
+
+
+
+
+}
+function drawMenu2() {
+
+  //Det samme for p2
+
+  background(50, 205, 50);
+  textSize(32);
+  text("Ali & Anton Football Game", 600, 100);
+  text("Congratulations, Messi got 10 points!", 500, 200);
+  text("Barcelona won the El Classico this time", 500, 300);
+  text("Press 1 to play again", 600, 400);
+  Backtogame();
+
+
+
+}
+//Vi laver funktionen Backtogame
+function Backtogame() {
+  //Funktionen tjekker om 1 er blevet trykket på. Hvis dette er tilfældet resetter den spillet
+  if (keyWentDown(49)) {
+    p1Point = 0;
+    p2Point = 0;
+    winpoints = 10;
+    drawGame();
+
+  }
+
+
+
+}
+
+//Vi laver en startskærm med tekst 
+function startgamescreen() {
+
+  background(50, 205, 50);
+  textSize(32);
+  text("Ali & Anton Football Game", 600, 50);
+  text("Player 1(Bale) controls with arrow keys", 500, 300);
+  text("Player 2(Messi) controls with WASD-keys", 500, 350);
+  text("You get a point by scoring in the opponents goal", 500, 450);
+  text("The first player to reach 10 points, wins the game", 500, 500);
+  text("Press 1 to play", 500, 600);
+  //Vi kalder funktionen playgame
+  playgame();
+
+
+}
+
+
+function playgame() {
+  //Vi tjekker om 1 er blevet trykket på, hvis sandt, starter vi spillet og sætter variablen gamenotstarted til falsk.
+  if (keyWentDown(49)) {
+    gamenotstarted = false;
+  }
+}
